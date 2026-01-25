@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Environment Issues",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "SessionNotCreated|device|UDID|simctl|capabilit|bundle|app path|app not found|architecture"
+  },
+  {
+    "name": "Element Not Found",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "NoSuchElement|not found|Unable to locate|could not find element"
+  },
+  {
+    "name": "Assertion Failures",
+    "matchedStatuses": ["failed"],
+    "messageRegex": "AssertionError|expected|but found"
+  },
+  {
+    "name": "Timeouts",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "TimeoutException|timed out|timeout"
+  }
+]
