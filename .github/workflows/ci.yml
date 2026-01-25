@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -105,3 +108,22 @@ jobs:
           appium --log-level error &
           for i in {1..30}; do curl -sf http://127.0.0.1:4723/wd/hub/status && break || sleep 2; done
           mvn -B -Denv=android -Dtags="${ANDROID_TAGS}" test
+
+      - name: Generate Allure report
+        if: always()
+        run: mvn -B -DskipTests allure:report
+
+      - name: Prepare GitHub Pages content
+        if: always()
+        run: |
+          BUILD_DIR="gh-pages/${{ github.run_number }}"
+          mkdir -p "${BUILD_DIR}"
+          cp -R target/allure-report/. "${BUILD_DIR}/"
+
+      - name: Deploy Allure report to GitHub Pages
+        if: always() && github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: gh-pages
+          keep_files: true
