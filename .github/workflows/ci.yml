@@ -109,6 +109,20 @@ jobs:
           for i in {1..30}; do curl -sf http://127.0.0.1:4723/wd/hub/status && break || sleep 2; done
           mvn -B -Denv=android -Dtags="${ANDROID_TAGS}" test
 
+      - name: Debug Allure output
+        if: always()
+        run: |
+          echo "Workspace:"
+          pwd
+          echo "Top-level files:"
+          ls -la
+          echo "Target directory:"
+          ls -la target || true
+          echo "Allure results directory:"
+          ls -la target/allure-results || true
+          echo "Allure report directory:"
+          ls -la target/allure-report || true
+
       - name: Generate Allure report
         if: always()
         run: mvn -B -DskipTests allure:report
@@ -121,21 +135,8 @@ jobs:
           if [ -d "target/allure-report" ]; then
             cp -R target/allure-report/. "${BUILD_DIR}/"
           else
-            echo "Allure report not found; creating placeholder."
-            cat > "${BUILD_DIR}/index.html" <<'HTML'
-            <!doctype html>
-            <html lang="en">
-              <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <title>Allure Report Not Available</title>
-              </head>
-              <body>
-                <h1>Allure report not available</h1>
-                <p>No Allure report was generated for this run.</p>
-              </body>
-            </html>
-            HTML
+            echo "Allure report not found; skipping publish for this run."
+            rmdir "${BUILD_DIR}"
           fi
 
       - name: Deploy Allure report to GitHub Pages
