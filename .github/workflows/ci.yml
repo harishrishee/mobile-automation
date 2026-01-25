@@ -118,7 +118,25 @@ jobs:
         run: |
           BUILD_DIR="gh-pages/${{ github.run_number }}"
           mkdir -p "${BUILD_DIR}"
-          cp -R target/allure-report/. "${BUILD_DIR}/"
+          if [ -d "target/allure-report" ]; then
+            cp -R target/allure-report/. "${BUILD_DIR}/"
+          else
+            echo "Allure report not found; creating placeholder."
+            cat > "${BUILD_DIR}/index.html" <<'HTML'
+            <!doctype html>
+            <html lang="en">
+              <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>Allure Report Not Available</title>
+              </head>
+              <body>
+                <h1>Allure report not available</h1>
+                <p>No Allure report was generated for this run.</p>
+              </body>
+            </html>
+            HTML
+          fi
 
       - name: Deploy Allure report to GitHub Pages
         if: always() && github.event_name != 'pull_request'
