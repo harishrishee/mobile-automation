@@ -112,10 +112,8 @@ jobs:
       - name: Generate Allure report
         if: always()
         run: |
-          mvn -B -DskipTests \
-            -Dallure.results.directory=target/allure-results \
-            -Dallure.report.directory=target/allure-report \
-            allure:report
+          npm install -g allure-commandline
+          allure generate target/allure-results --clean -o target/allure-report
 
       - name: Debug Allure output
         if: always()
@@ -130,35 +128,34 @@ jobs:
           ls -la target/allure-results || true
           echo "Allure report directory:"
           ls -la target/allure-report || true
+          echo "Allure report (maven plugin) directory:"
+          ls -la target/site/allure-maven-plugin || true
 
-      - name: Check Allure report
+      - name: Resolve Allure report directory
         if: always()
         id: allure_report_check
         run: |
-          if [ -d "target/allure-report" ]; then
-            echo "report_dir_exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "report_dir_exists=false" >> "$GITHUB_OUTPUT"
-          fi
           if [ -f "target/allure-report/index.html" ]; then
-            echo "report_index_exists=true" >> "$GITHUB_OUTPUT"
+            echo "report_dir=target/allure-report" >> "$GITHUB_OUTPUT"
+          elif [ -f "target/site/allure-maven-plugin/index.html" ]; then
+            echo "report_dir=target/site/allure-maven-plugin" >> "$GITHUB_OUTPUT"
           else
-            echo "report_index_exists=false" >> "$GITHUB_OUTPUT"
+            echo "report_dir=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare GitHub Pages content
-        if: always() && steps.allure_report_check.outputs.report_dir_exists == 'true' && steps.allure_report_check.outputs.report_index_exists == 'true'
+        if: always() && steps.allure_report_check.outputs.report_dir != ''
         run: |
           BUILD_DIR="gh-pages/${{ github.run_number }}"
           mkdir -p "${BUILD_DIR}"
-          cp -R target/allure-report/. "${BUILD_DIR}/"
+          cp -R "${{ steps.allure_report_check.outputs.report_dir }}/." "${BUILD_DIR}/"
           echo "Publish directory:"
           ls -la gh-pages || true
           echo "Build directory:"
           ls -la "${BUILD_DIR}" || true
 
       - name: Deploy Allure report to GitHub Pages
-        if: always() && github.event_name != 'pull_request' && steps.allure_report_check.outputs.report_dir_exists == 'true' && steps.allure_report_check.outputs.report_index_exists == 'true'
+        if: always() && github.event_name != 'pull_request' && steps.allure_report_check.outputs.report_dir != ''
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
