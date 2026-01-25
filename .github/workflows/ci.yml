@@ -109,6 +109,14 @@ jobs:
           for i in {1..30}; do curl -sf http://127.0.0.1:4723/wd/hub/status && break || sleep 2; done
           mvn -B -Denv=android -Dtags="${ANDROID_TAGS}" test
 
+      - name: Generate Allure report
+        if: always()
+        run: |
+          mvn -B -DskipTests \
+            -Dallure.results.directory=target/allure-results \
+            -Dallure.report.directory=target/allure-report \
+            allure:report
+
       - name: Debug Allure output
         if: always()
         run: |
@@ -123,24 +131,29 @@ jobs:
           echo "Allure report directory:"
           ls -la target/allure-report || true
 
-      - name: Generate Allure report
+      - name: Check Allure report
         if: always()
-        run: mvn -B -DskipTests allure:report
+        id: allure_report_check
+        run: |
+          if [ -d "target/allure-report" ] || [ -d "target/site/allure-maven-plugin" ]; then
+            echo "report_dir_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_dir_exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Prepare GitHub Pages content
-        if: always()
+        if: always() && steps.allure_report_check.outputs.report_dir_exists == 'true'
         run: |
           BUILD_DIR="gh-pages/${{ github.run_number }}"
           mkdir -p "${BUILD_DIR}"
-          if [ -d "target/allure-report" ]; then
-            cp -R target/allure-report/. "${BUILD_DIR}/"
-          else
-            echo "Allure report not found; skipping publish for this run."
-            rmdir "${BUILD_DIR}"
+          REPORT_DIR="target/allure-report"
+          if [ -d "target/site/allure-maven-plugin" ]; then
+            REPORT_DIR="target/site/allure-maven-plugin"
           fi
+          cp -R "${REPORT_DIR}/." "${BUILD_DIR}/"
 
       - name: Deploy Allure report to GitHub Pages
-        if: always() && github.event_name != 'pull_request'
+        if: always() && github.event_name != 'pull_request' && steps.allure_report_check.outputs.report_dir_exists == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
