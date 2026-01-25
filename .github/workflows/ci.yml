@@ -81,6 +81,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-kvm
           sudo usermod -aG kvm $USER
+          # Ensure current user can access /dev/kvm on hosted runner
+          sudo chown $USER /dev/kvm
+          ls -l /dev/kvm
 
       - name: Create and start emulator
         run: |
