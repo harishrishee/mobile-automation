@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -40,7 +41,7 @@ jobs:
         run: mvn -B -DskipTests package
 
   ios-tests:
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, X64, IOS]
     env:
       IOS_TAGS: ${{ github.event.inputs.ios_tags || '@iOS' }}
     steps:
@@ -51,6 +52,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -116,6 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_TAGS: ${{ github.event.inputs.android_tags || '@ApiDemos' }}
+      ANDROID_AVD_HOME: ${{ env.HOME }}/.android/avd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -135,6 +138,19 @@ jobs:
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Cache Android SDK and AVD
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}
+            ${{ env.ANDROID_AVD_HOME }}
+            ~/.android
+            ~/.appium
+            ~/.npm
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
+
       - name: Install Appium
         run: |
           npm install -g appium
@@ -148,10 +164,13 @@ jobs:
 
       - name: Create and start emulator
         run: |
+          export ANDROID_SDK_ROOT="${ANDROID_HOME}"
+          export ANDROID_AVD_HOME="${HOME}/.android/avd"
+          mkdir -p "${ANDROID_AVD_HOME}"
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
           ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "emulator" "cmdline-tools;latest" "system-images;android-34;google_apis;x86_64"
-          mkdir -p "${HOME}/.android/avd"
-          echo "no" | ${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager create avd -n ci_api_34 -k "system-images;android-34;google_apis;x86_64" --device "pixel_5"
+          echo "no" | ${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager create avd -n ci_api_34 -k "system-images;android-34;google_apis;x86_64" --device "pixel_5" || true
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager list avd
           ${ANDROID_HOME}/emulator/emulator -avd ci_api_34 -no-window -no-audio -gpu swiftshader_indirect -no-snapshot -no-boot-anim -no-snapshot-load &
           adb wait-for-device
           adb shell 'while [[ "$(getprop sys.boot_completed)" != "1" ]]; do sleep 1; done'
