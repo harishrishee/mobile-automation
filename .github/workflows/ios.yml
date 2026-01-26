@@ -146,30 +146,14 @@ jobs:
           export SIM_UDID
           xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
-          bootstatus() {
-            python3 - <<'PY'
-import os
-import subprocess
-import sys
-
-sim_udid = os.environ.get("SIM_UDID")
-if not sim_udid:
-    sys.exit(1)
-
-try:
-    subprocess.run(["xcrun", "simctl", "bootstatus", sim_udid, "-b"], timeout=300, check=True)
-except subprocess.TimeoutExpired:
-    sys.exit(1)
-except subprocess.CalledProcessError:
-    sys.exit(1)
-PY
-          }
-          if ! bootstatus; then
+          xcrun simctl bootstatus "${SIM_UDID}" -b || {
             xcrun simctl shutdown "${SIM_UDID}" || true
             xcrun simctl erase "${SIM_UDID}" || true
             xcrun simctl boot "${SIM_UDID}" || true
-            bootstatus
-          fi
+            xcrun simctl bootstatus "${SIM_UDID}" -b
+          }
+          echo "Simulator status:"
+          xcrun simctl list devices | grep -E "iPhone 17 Pro|Booted" || true
 
       - name: Run iOS tests
         env:
