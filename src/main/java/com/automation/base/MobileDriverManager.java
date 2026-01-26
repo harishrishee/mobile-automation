@@ -147,6 +147,20 @@ public class MobileDriverManager {
                 boolean fullReset = Boolean.parseBoolean(ConfigReader.getProperty("mobile.fullReset", "false"));
                 options.setNoReset(noReset);
                 options.setFullReset(fullReset);
+
+                // Optional WDA settings (increase timeouts for CI)
+                String wdaLaunchTimeout = ConfigReader.getProperty("ios.wdaLaunchTimeout", "").trim();
+                if (!wdaLaunchTimeout.isEmpty()) {
+                    options.setCapability("wdaLaunchTimeout", Integer.parseInt(wdaLaunchTimeout));
+                }
+                String wdaStartupRetries = ConfigReader.getProperty("ios.wdaStartupRetries", "").trim();
+                if (!wdaStartupRetries.isEmpty()) {
+                    options.setCapability("wdaStartupRetries", Integer.parseInt(wdaStartupRetries));
+                }
+                String wdaStartupRetryInterval = ConfigReader.getProperty("ios.wdaStartupRetryInterval", "").trim();
+                if (!wdaStartupRetryInterval.isEmpty()) {
+                    options.setCapability("wdaStartupRetryInterval", Integer.parseInt(wdaStartupRetryInterval));
+                }
                 
                 URL url = new URL(resolveParallelValue("appium.server.url", "appium.server.url.list"));
                 appiumDriver = new AndroidDriver(url, options);
