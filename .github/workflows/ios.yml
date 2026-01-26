@@ -143,6 +143,7 @@ jobs:
           if [ -z "${SIM_UDID}" ]; then
             SIM_UDID=$(xcrun simctl create "${SIM_NAME}" "${DEVICE_TYPE_ID}" "${RUNTIME_ID}")
           fi
+          export SIM_UDID
           xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
           python3 - <<'PY'
