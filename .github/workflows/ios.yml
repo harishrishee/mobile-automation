@@ -144,6 +144,7 @@ jobs:
             SIM_UDID=$(xcrun simctl create "${SIM_NAME}" "${DEVICE_TYPE_ID}" "${RUNTIME_ID}")
           fi
           export SIM_UDID
+          echo "SIM_UDID=${SIM_UDID}" >> "$GITHUB_ENV"
           xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
           xcrun simctl bootstatus "${SIM_UDID}" -b || {
@@ -161,7 +162,7 @@ jobs:
         run: |
           appium --log-level error &
           for i in {1..30}; do curl -sf http://127.0.0.1:4723/wd/hub/status && break || sleep 2; done
-          mvn -B -Denv=ios -Dtags="${IOS_TAGS}" test
+          mvn -B -Denv=ios -Dtags="${IOS_TAGS}" -Dmobile.udid="${SIM_UDID}" test
 
       - name: Generate Allure report
         if: always()

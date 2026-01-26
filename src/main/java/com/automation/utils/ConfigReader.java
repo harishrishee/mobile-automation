@@ -39,6 +39,10 @@ public class ConfigReader {
             }
             loadProperties(env);
         }
+        String systemValue = System.getProperty(key);
+        if (systemValue != null && !systemValue.isEmpty()) {
+            return systemValue;
+        }
         String value = properties.getProperty(key);
         if (value == null) {
             throw new RuntimeException("Property '" + key + "' not found in configuration");
@@ -53,6 +57,10 @@ public class ConfigReader {
                 env = "android"; // Default to android
             }
             loadProperties(env);
+        }
+        String systemValue = System.getProperty(key);
+        if (systemValue != null && !systemValue.isEmpty()) {
+            return systemValue;
         }
         return properties.getProperty(key, defaultValue);
     }
