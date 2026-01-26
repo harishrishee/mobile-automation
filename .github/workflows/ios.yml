@@ -145,12 +145,50 @@ jobs:
           fi
           xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
-          timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b || true
-          if ! timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b; then
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          sim_udid = os.environ.get("SIM_UDID")
+          if not sim_udid:
+              sys.exit("SIM_UDID is not set")
+
+          def wait_boot(timeout_seconds):
+              cmd = ["xcrun", "simctl", "bootstatus", sim_udid, "-b"]
+              try:
+                  subprocess.run(cmd, timeout=timeout_seconds, check=True)
+                  return True
+              except subprocess.TimeoutExpired:
+                  print("Bootstatus timed out")
+                  return False
+              except subprocess.CalledProcessError:
+                  return False
+
+          ok = wait_boot(300)
+          sys.exit(0 if ok else 1)
+          PY
+          if [ $? -ne 0 ]; then
             xcrun simctl shutdown "${SIM_UDID}" || true
             xcrun simctl erase "${SIM_UDID}" || true
             xcrun simctl boot "${SIM_UDID}" || true
-            timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b
+            python3 - <<'PY'
+            import subprocess
+            import os
+            import sys
+            timeout_seconds = 300
+            sim_udid = os.environ.get("SIM_UDID")
+            if not sim_udid:
+                sys.exit("SIM_UDID is not set")
+            cmd = ["xcrun", "simctl", "bootstatus", sim_udid, "-b"]
+            try:
+              subprocess.run(cmd, timeout=timeout_seconds, check=True)
+            except subprocess.TimeoutExpired:
+              print("Bootstatus timed out")
+              sys.exit(1)
+            except subprocess.CalledProcessError:
+              sys.exit(1)
+            PY
           fi
 
       - name: Run iOS tests
