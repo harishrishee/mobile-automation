@@ -143,8 +143,15 @@ jobs:
           if [ -z "${SIM_UDID}" ]; then
             SIM_UDID=$(xcrun simctl create "${SIM_NAME}" "${DEVICE_TYPE_ID}" "${RUNTIME_ID}")
           fi
+          xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
-          xcrun simctl bootstatus "${SIM_UDID}" -b
+          xcrun simctl bootstatus "${SIM_UDID}" -b -t 300 || true
+          if ! xcrun simctl bootstatus "${SIM_UDID}" -b -t 300; then
+            xcrun simctl shutdown "${SIM_UDID}" || true
+            xcrun simctl erase "${SIM_UDID}" || true
+            xcrun simctl boot "${SIM_UDID}" || true
+            xcrun simctl bootstatus "${SIM_UDID}" -b -t 300
+          fi
 
       - name: Run iOS tests
         env:
