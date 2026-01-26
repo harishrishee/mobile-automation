@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"  Validate MyDemoApp login flow on iOS simulator","50601","Add Product to Cart","","2026-01-26","skipped","2026-01-26","","iOS MyDemoApp Tests","Add Product to Cart",""
