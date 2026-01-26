@@ -1,0 +1,7 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"  Test ApiDemos app functionality on emulator","33888","Toggle a checkbox in Controls","","2026-01-26","passed","2026-01-26","","ApiDemos App Tests","Toggle a checkbox in Controls",""
+"  Test ApiDemos app functionality on emulator","22558","Verify App screen categories","","2026-01-26","passed","2026-01-26","","ApiDemos App Tests","Verify App screen categories",""
+"  Test ApiDemos app functionality on emulator","40268","Set WiFi preference dependency","","2026-01-26","passed","2026-01-26","","ApiDemos App Tests","Set WiFi preference dependency",""
+"  Test ApiDemos app functionality on emulator","36557","Open date picker dialog","","2026-01-26","broken","2026-01-26","","ApiDemos App Tests","Open date picker dialog",""
+"  Test ApiDemos app functionality on emulator","29797","Navigate to Alert Dialogs","","2026-01-26","passed","2026-01-26","","ApiDemos App Tests","Navigate to Alert Dialogs",""
+"  Test ApiDemos app functionality on emulator","38581","Verify ApiDemos home screen categories","","2026-01-26","passed","2026-01-26","","ApiDemos App Tests","Verify ApiDemos home screen categories",""
