@@ -145,12 +145,12 @@ jobs:
           fi
           xcrun simctl shutdown all || true
           xcrun simctl boot "${SIM_UDID}" || true
-          xcrun simctl bootstatus "${SIM_UDID}" -b -t 300 || true
-          if ! xcrun simctl bootstatus "${SIM_UDID}" -b -t 300; then
+          timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b || true
+          if ! timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b; then
             xcrun simctl shutdown "${SIM_UDID}" || true
             xcrun simctl erase "${SIM_UDID}" || true
             xcrun simctl boot "${SIM_UDID}" || true
-            xcrun simctl bootstatus "${SIM_UDID}" -b -t 300
+            timeout 300 xcrun simctl bootstatus "${SIM_UDID}" -b
           fi
 
       - name: Run iOS tests
