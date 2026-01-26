@@ -44,38 +44,102 @@ jobs:
 
       - name: Boot iOS Simulator
         run: |
-          SIM_NAME="iPhone 15"
-          RUNTIME_ID=$(xcrun simctl list runtimes -j | python3 - <<'PY'
-          import json, sys
-          data = json.load(sys.stdin)
-          runtimes = [r for r in data.get("runtimes", []) if r.get("isAvailable") and r.get("identifier", "").startswith("com.apple.CoreSimulator.SimRuntime.iOS")]
-          if not runtimes:
-              sys.exit(1)
-          print(sorted(runtimes, key=lambda r: r.get("version", ""))[-1]["identifier"])
+          SIM_NAME="iPhone 17 Pro"
+          eval "$(python3 - <<'PY'
+          import json
+          import re
+          import shlex
+          import subprocess
+          import sys
+
+          def run(cmd):
+              return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+
+          def load_json(cmd):
+              try:
+                  out = run(cmd)
+                  if not out:
+                      return None
+                  return json.loads(out)
+              except Exception:
+                  return None
+
+          runtime_id = None
+          runtimes = load_json(["xcrun", "simctl", "list", "runtimes", "-j"])
+          if runtimes:
+              available = [
+                  r for r in runtimes.get("runtimes", [])
+                  if r.get("isAvailable") and str(r.get("identifier", "")).startswith("com.apple.CoreSimulator.SimRuntime.iOS")
+              ]
+              if available:
+                  runtime_id = sorted(available, key=lambda r: r.get("version", ""))[-1].get("identifier")
+
+          if not runtime_id:
+              try:
+                  text = run(["xcrun", "simctl", "list", "runtimes"])
+              except Exception:
+                  text = ""
+              for line in text.splitlines():
+                  if "iOS" in line and "com.apple.CoreSimulator.SimRuntime.iOS" in line:
+                      match = re.search(r"(com\.apple\.CoreSimulator\.SimRuntime\.iOS[^\s\)]*)", line)
+                      if match:
+                          runtime_id = match.group(1)
+                          break
+
+          if not runtime_id:
+              sys.exit("Could not determine iOS runtime")
+
+          device_type_id = None
+          types = load_json(["xcrun", "simctl", "list", "devicetypes", "-j"])
+          if types:
+              iphones = [t for t in types.get("devicetypes", []) if "iPhone" in t.get("name", "")]
+              preferred = [t for t in iphones if t.get("name") == "iPhone 15"]
+              chosen = preferred[0] if preferred else (iphones[-1] if iphones else None)
+              if chosen:
+                  device_type_id = chosen.get("identifier")
+
+          if not device_type_id:
+              try:
+                  text = run(["xcrun", "simctl", "list", "devicetypes"])
+              except Exception:
+                  text = ""
+              for line in text.splitlines():
+                  if "iPhone 15" in line:
+                      match = re.search(r"(com\.apple\.CoreSimulator\.SimDeviceType\.iPhone[^ ]*)", line)
+                      if match:
+                          device_type_id = match.group(1)
+                          break
+              if not device_type_id:
+                  for line in text.splitlines():
+                      if "iPhone" in line:
+                          match = re.search(r"(com\.apple\.CoreSimulator\.SimDeviceType\.iPhone[^ ]*)", line)
+                          if match:
+                              device_type_id = match.group(1)
+                              break
+
+          if not device_type_id:
+              sys.exit("Could not determine iPhone device type")
+
+          sim_udid = None
+          devices = load_json(["xcrun", "simctl", "list", "devices", "-j"])
+          if devices:
+              for _, devs in devices.get("devices", {}).items():
+                  for d in devs:
+                      if d.get("name") == "iPhone 17 Pro" and d.get("isAvailable"):
+                          sim_udid = d.get("udid")
+                          break
+                  if sim_udid:
+                      break
+
+          def shquote(value):
+              return shlex.quote(value)
+
+          print(f"RUNTIME_ID={shquote(runtime_id)}")
+          print(f"DEVICE_TYPE_ID={shquote(device_type_id)}")
+          if sim_udid:
+              print(f"SIM_UDID={shquote(sim_udid)}")
           PY
-          )
-          DEVICE_TYPE_ID=$(xcrun simctl list devicetypes -j | python3 - <<'PY'
-          import json, sys
-          data = json.load(sys.stdin)
-          types = [t for t in data.get("devicetypes", []) if "iPhone" in t.get("name", "")]
-          if not types:
-              sys.exit(1)
-          preferred = [t for t in types if t.get("name") == "iPhone 15"]
-          print((preferred[0] if preferred else types[-1])["identifier"])
-          PY
-          )
-          SIM_UDID=$(xcrun simctl list devices -j | python3 - <<'PY'
-          import json, sys
-          data = json.load(sys.stdin)
-          name = "iPhone 15"
-          for runtime, devices in data.get("devices", {}).items():
-              for d in devices:
-                  if d.get("name") == name and d.get("isAvailable"):
-                      print(d.get("udid"))
-                      sys.exit(0)
-          sys.exit(0)
-          PY
-          )
+          )"
           if [ -z "${SIM_UDID}" ]; then
             SIM_UDID=$(xcrun simctl create "${SIM_NAME}" "${DEVICE_TYPE_ID}" "${RUNTIME_ID}")
           fi
