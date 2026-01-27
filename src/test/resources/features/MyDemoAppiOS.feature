@@ -6,16 +6,14 @@ Feature: iOS MyDemoApp Tests
   Background:
     Given the iOS MyDemoApp is launched
 
-#  Scenario: Verify login screen
-#    When i click on the more button
-#    And i click on the login button
-#    Then the login screen should be displayed
-#
-#  Scenario: Login with a listed user
-#    When I select username "bob@example.com"
-#    And I enter password "10203040"
-#    And I tap Login
-#    Then the catalog tab should be visible
+  Scenario: Verify login screen
+    When i click on the more button
+    And i click on the login button
+    Then the login screen should be displayed
 
-    Scenario: Add Product to Cart
-      When i click on the product button "Sauce Labs Backpack - Green"
+  Scenario: Login with a listed user
+    When I select username "bob@example.com"
+    And I enter password "10203040"
+    And I tap Login
+    Then the catalog tab should be visible
+
