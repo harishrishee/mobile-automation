@@ -1,0 +1,1 @@
+[{"uid":"147eab16fd1163ee","name":"Login with a listed user","time":{"start":1769522387883,"stop":1769522426142,"duration":38259},"status":"broken","severity":"normal"},{"uid":"243da0316d95e1e","name":"Verify login screen","time":{"start":1769522045894,"stop":1769522382516,"duration":336622},"status":"skipped","severity":"normal"}]
