@@ -161,6 +161,10 @@ public class MobileDriverManager {
                 if (!wdaStartupRetryInterval.isEmpty()) {
                     options.setCapability("wdaStartupRetryInterval", Integer.parseInt(wdaStartupRetryInterval));
                 }
+                String simulatorStartupTimeout = ConfigReader.getProperty("ios.simulatorStartupTimeout", "").trim();
+                if (!simulatorStartupTimeout.isEmpty()) {
+                    options.setCapability("simulatorStartupTimeout", Integer.parseInt(simulatorStartupTimeout));
+                }
                 
                 URL url = new URL(resolveParallelValue("appium.server.url", "appium.server.url.list"));
                 appiumDriver = new AndroidDriver(url, options);
