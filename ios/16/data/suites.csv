@@ -1,0 +1,3 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"  Validate MyDemoApp login flow on iOS simulator","616833","Login with a listed user","","2026-02-09","skipped","2026-02-09","","iOS MyDemoApp Tests","Login with a listed user",""
+"  Validate MyDemoApp login flow on iOS simulator","924037","Verify login screen","","2026-02-09","skipped","2026-02-09","","iOS MyDemoApp Tests","Verify login screen",""
