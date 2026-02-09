@@ -1,6 +1,9 @@
 package com.automation.listeners;
 
+import com.automation.base.MobileDriverManager;
+import com.automation.utils.ConfigReader;
 import com.automation.utils.RetryAnalyzer;
+import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Allure;
 import io.qameta.allure.AllureLifecycle;
 import org.apache.logging.log4j.LogManager;
@@ -189,14 +192,15 @@ public class AllureRetryListener implements IInvokedMethodListener, ITestListene
         String methodName = result.getMethod().getMethodName();
         Object[] params = result.getParameters();
         String paramsStr = params != null ? java.util.Arrays.toString(params) : "";
+        String deviceId = getDeviceIdentifier();
         
         // Create a hash-based historyId similar to Allure's default
-        String baseId = className + "." + methodName + paramsStr;
+        String baseId = className + "." + methodName + paramsStr + "|" + deviceId;
         // Use a simple hash to create a consistent ID
         int hashCode = baseId.hashCode();
         String historyId = String.valueOf(Math.abs(hashCode));
         
-        logger.debug("Generated historyId: {} for test: {}.{}", historyId, className, methodName);
+        logger.debug("Generated historyId: {} for test: {}.{} device={}", historyId, className, methodName, deviceId);
         return historyId;
     }
 
@@ -208,7 +212,29 @@ public class AllureRetryListener implements IInvokedMethodListener, ITestListene
         String methodName = result.getMethod().getMethodName();
         Object[] params = result.getParameters();
         String paramsStr = params != null ? java.util.Arrays.toString(params) : "";
-        return className + "." + methodName + "(" + paramsStr + ")";
+        return className + "." + methodName + "(" + paramsStr + ")@" + getDeviceIdentifier();
+    }
+
+    private String getDeviceIdentifier() {
+        try {
+            AppiumDriver driver = MobileDriverManager.getDriver();
+            if (driver != null && driver.getCapabilities() != null) {
+                Object udid = driver.getCapabilities().getCapability("udid");
+                if (udid != null && !udid.toString().isEmpty()) {
+                    return udid.toString();
+                }
+                Object deviceName = driver.getCapabilities().getCapability("deviceName");
+                if (deviceName != null && !deviceName.toString().isEmpty()) {
+                    return deviceName.toString();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        String udid = ConfigReader.getProperty("mobile.udid", "").trim();
+        if (!udid.isEmpty()) {
+            return udid;
+        }
+        return ConfigReader.getProperty("mobile.device.name", "unknown-device").trim();
     }
 
     /**

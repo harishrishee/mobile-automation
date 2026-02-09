@@ -40,6 +40,7 @@ jobs:
       - name: Install Appium and iOS driver
         run: |
           npm install -g appium
+          appium plugin install --source=npm appium-device-farm
           appium driver install xcuitest
 
       - name: Boot iOS Simulator
@@ -160,7 +161,7 @@ jobs:
         env:
           env: ios
         run: |
-          appium --log-level error &
+          appium --log-level error -pa /wd/hub --use-plugins=device-farm --plugin-device-farm-platform=ios &
           for i in {1..30}; do curl -sf http://127.0.0.1:4723/wd/hub/status && break || sleep 2; done
           mvn -B -Denv=ios -Dtags="${IOS_TAGS}" -Dmobile.udid="${SIM_UDID}" test
 

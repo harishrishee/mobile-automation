@@ -1,698 +1,237 @@
 # Mobile Automation Framework
 
-End-to-end mobile automation framework using Appium, Cucumber (BDD), TestNG, and Allure.
+End-to-end mobile automation framework using Appium, Cucumber (BDD), TestNG, and Allure reports. Supports Android and iOS, local runs, and CI via GitHub Actions. Device Farm (Appium 2 plugin) is supported for parallel/distributed device management.
 
-## What This Framework Provides
+## Key Libraries
+- Appium Java Client (`io.appium:java-client`)
+- Selenium Java (`org.seleniumhq.selenium:selenium-java`)
+- Cucumber (`io.cucumber:cucumber-java`, `cucumber-testng`)
+- TestNG (`org.testng:testng`)
+- Allure (`io.qameta.allure:*`)
+- Log4j2
 
-- Appium 9 + Selenium 4
-- Cucumber BDD with Page Object Model
-- Android and iOS support
-- Parallel device support (Android)
-- Allure reports
-- Reliable driver lifecycle per scenario
+## Prerequisites
+
+### Required (Local)
+- **Java 21** (project compiles with `maven.compiler.source/target=21`)
+- **Maven 3.6+**
+- **Node.js 18+** (20 recommended)
+- **Appium 3.x**
+- **Android SDK** (Android tests)
+- **Xcode + iOS Simulator** (iOS tests)
+
+### Optional (Reports)
+- **Allure CLI** (for local report generation)
+
+### Install Java 21 (macOS example)
+```
+brew install --cask temurin@21
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+export PATH="$JAVA_HOME/bin:$PATH"
+java -version
+```
+
+### Install Appium 3
+```
+npm install -g appium
+appium driver install uiautomator2
+appium driver install xcuitest
+```
+
+### Device Farm Plugin (optional, for distribution)
+```
+appium plugin install --source=npm appium-device-farm
+appium plugin list --installed
+```
 
 ## Project Structure
-
 ```
 mobile-automation/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/automation/
-│   │   │   ├── base/          # MobileDriverManager, MobileBasePage
+│   │   │   ├── base/          # Driver manager and base page
 │   │   │   ├── hooks/         # Cucumber hooks
-│   │   │   └── utils/         # ConfigReader
+│   │   │   └── utils/         # ConfigReader, retry utilities
 │   │   └── resources/
-│   │       ├── apps/          # App bundles (APK/APP)
-│   │       └── config/        # Platform configs (android/ios)
+│   │       ├── apps/          # APK/APP bundles (local)
+│   │       └── config/        # android.properties, ios.properties
 │   └── test/
 │       ├── java/com/automation/
 │       │   ├── pages/         # Page objects
-│       │   ├── stepdefinitions/ # Step definitions
-│       │   └── runners/       # Cucumber TestNG runner
+│       │   ├── stepdefinitions/
+│       │   └── runners/       # TestRunner
 │       └── resources/
-│           ├── features/      # Gherkin feature files
+│           ├── features/      # .feature files
 │           └── allure.properties
+├── .github/workflows/         # GitHub Actions
 └── pom.xml
 ```
 
-## Requirements (macOS)
+## Configuration
 
-- Java 21+
-- Maven 3.6+
-- Node.js + Appium (`npm install -g appium`)
-- Android SDK (for Android tests)
-- Xcode (for iOS tests)
+### Android (`src/main/resources/config/android.properties`)
+- `appium.server.url` default: `http://localhost:4723`
+- `mobile.app.path` points to the APK
+- Optional parallel lists:
+  - `mobile.device.name.list`
+  - `mobile.udid.list`
+  - `mobile.platform.version.list`
+  
+**Core Android properties**
+- `mobile.platform` (android)
+- `mobile.device.name`
+- `mobile.udid`
+- `mobile.platform.version`
+- `mobile.automation.name` (UiAutomator2)
 
-## Appium Setup
+**App selection**
+- `mobile.app.path` (APK file path)
+- or `mobile.app.package` + `mobile.app.activity` (installed app)
+- or `mobile.browser.name=Chrome` (mobile web)
 
-```bash
-# Start Appium server
-appium
+**Optional browser settings**
+- `mobile.chromedriver.executable`
+- `mobile.chromedriver.port`
+- `mobile.browser.headless`
+- `mobile.browser.args`
 
-# List installed drivers
-appium driver list
+**Reset/Retry**
+- `mobile.noReset`
+- `mobile.fullReset`
+- `retry.count`
 
-# Install drivers
-appium driver install uiautomator2
-appium driver install xcuitest
+### iOS (`src/main/resources/config/ios.properties`)
+- `appium.server.url` default: `http://localhost:4723/wd/hub`
+- `mobile.app.path` points to the `.app` (simulator build)
+- WDA and simulator timeouts for CI are configurable
+
+**Core iOS properties**
+- `mobile.platform` (ios)
+- `mobile.device.name`
+- `mobile.udid` (optional, if you want to pin a simulator/device)
+- `mobile.platform.version` (optional; leave blank for CI)
+- `mobile.automation.name` (XCUITest)
+
+**App selection**
+- `mobile.app.path` (simulator `.app` build)
+- or `mobile.bundle.id` (installed app)
+
+**WDA / Simulator timeouts**
+- `ios.wdaLaunchTimeout`
+- `ios.wdaStartupRetries`
+- `ios.wdaStartupRetryInterval`
+- `ios.simulatorStartupTimeout`
+
+**Reset/Retry**
+- `mobile.noReset`
+- `mobile.fullReset`
+- `retry.count`
+
+## Appium Options Mapping
+
+The framework maps properties into Appium capabilities:
+
+**Shared**
+- `appium.server.url` → Appium server endpoint
+- `mobile.device.name` → `deviceName`
+- `mobile.udid` → `udid`
+- `mobile.platform.version` → `platformVersion`
+- `mobile.automation.name` → `automationName`
+- `mobile.noReset` → `noReset`
+- `mobile.fullReset` → `fullReset`
+
+**Android specific**
+- `mobile.app.path` → `app`
+- `mobile.app.package` → `appPackage`
+- `mobile.app.activity` → `appActivity`
+- `mobile.browser.name` → `browserName`
+
+**iOS specific**
+- `mobile.app.path` → `app`
+- `mobile.bundle.id` → `bundleId`
+- `ios.wdaLaunchTimeout` → `wdaLaunchTimeout`
+- `ios.wdaStartupRetries` → `wdaStartupRetries`
+- `ios.wdaStartupRetryInterval` → `wdaStartupRetryInterval`
+- `ios.simulatorStartupTimeout` → `simulatorStartupTimeout`
+
+## Running Tests (Local)
+
+### Start Appium (standard)
+```
+appium --log-level error
 ```
 
-## Configuration Files
-
-Configs are loaded from `src/main/resources/config/{env}.properties`.
-
-Current configs:
-- `android.properties`
-- `ios.properties`
-
-Run with:
-```bash
-mvn test -Denv=android
-mvn test -Denv=ios
+### Start Appium with Device Farm
+```
+appium --use-plugins=device-farm --plugin-device-farm-platform=android -pa /wd/hub
+```
+For iOS:
+```
+appium --use-plugins=device-farm --plugin-device-farm-platform=ios -pa /wd/hub
 ```
 
-## Android Configuration (`android.properties`)
-
-```properties
-mobile.platform=android
-appium.server.url=http://localhost:4723
-mobile.device.name=Android Emulator
-mobile.udid=emulator-5554
-mobile.platform.version=11.0
-
-# Native app APK
-mobile.app.path=src/test/resources/apps/ApiDemos-debug.apk
-
-# Browser mode (optional)
-# mobile.browser.name=Chrome
-
-# Automation
-mobile.automation.name=UiAutomator2
-mobile.noReset=true
-mobile.fullReset=false
+### Android
 ```
-
-## iOS Configuration (`ios.properties`)
-
-Simulator build must be a `.app` compiled for `iphonesimulator`.
-
-```properties
-mobile.platform=ios
-appium.server.url=http://localhost:4723
-
-# Real device (IPA)
-mobile.device.name=iPhone
-# mobile.udid=YOUR_DEVICE_UDID
-# mobile.platform.version=17.5
-
-# Simulator (APP)
-mobile.device.name=iPhone 17 Pro
-mobile.platform.version=26.2
-
-# App path (simulator build)
-mobile.app.path=src/test/resources/apps/My Demo App.app
-
-mobile.automation.name=XCUITest
-mobile.noReset=true
-mobile.fullReset=false
-```
-
-## Running Tests
-
-```bash
-# Android tests
 mvn test -Denv=android -Dtags="@ApiDemos"
+```
 
-# iOS tests
+### iOS
+```
 mvn test -Denv=ios -Dtags="@iOS"
 ```
 
-## Screenshots
-
-Controlled by configuration:
-
-```properties
-screenshot.steps=false
-screenshot.scenario=true
+## Sample Test Case
+Example feature from `src/test/resources/features/ApiDemos.feature`:
+```
+@ApiDemos
+Feature: ApiDemos App Tests
+  Scenario: Navigate to Alert Dialogs
+    When I open Alert Dialogs from App menu
+    Then the Alert Dialogs screen should be displayed
 ```
 
-- `screenshot.steps=true` captures a screenshot after every step.
-- `screenshot.scenario=true` captures one screenshot at scenario end (pass only).
-- Failures always attach a screenshot automatically.
+## Allure Reports
 
-## Allure Categories and Trends
+Results are written to:
+- `target/allure-results`
 
-- Categories are defined in `src/test/resources/categories.json`.
-- Trends require Allure history between runs:
-  - Keep `target/allure-results/history` and copy it into the next run.
-  - Example:
-    ```bash
-    cp -R target/allure-report/history target/allure-results/history
-    ```
-
-## Parallel Execution (Android)
-
-Set list values in `android.properties`:
-
-```properties
-appium.server.url.list=http://localhost:4723,http://localhost:4725
-mobile.device.name.list=emulator-5554,emulator-5556
-mobile.udid.list=emulator-5554,emulator-5556
-mobile.platform.version.list=11.0,11.0
+Generate report:
+```
+npm install -g allure-commandline
+allure generate target/allure-results --clean -o target/allure-report
 ```
 
-Run with:
-```bash
-mvn test -Denv=android -DthreadCount=2
+Open report:
+```
+open target/allure-report/index.html
 ```
 
-## Known Issues & Fixes
+## GitHub Actions
 
-- **Simulator SDK mismatch**  
-  Use a platform version that exists in `xcrun simctl list runtimes`.
+- Android workflow: `.github/workflows/android.yml`
+- iOS workflow: `.github/workflows/ios.yml`
 
-- **Device build on Simulator**  
-  `.ipa` works only on real device. Simulator requires `.app` built for `iphonesimulator`.
-
-- **App path not found**  
-  Ensure `mobile.app.path` is correct. Relative paths resolve from project root.
-
-- **simctl not found**  
-  ```bash
-  xcode-select --install
-  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-  ```
-
-## License
-
-MIT License
-<<<<<<< HEAD
-# Mobile Automation Framework
-
-End-to-end mobile automation framework using Appium, Cucumber (BDD), TestNG, and Allure.
-
-## What This Framework Provides
-
-- Appium 9 + Selenium 4
-- Cucumber BDD with Page Object Model
-- Android and iOS support
-- Parallel device support (Android)
-- Allure reports
-- Reliable driver lifecycle per scenario
-
-## Project Structure
-
-```
-mobile-automation/
-├── src/
-│   ├── main/
-│   │   ├── java/com/automation/
-│   │   │   ├── base/          # MobileDriverManager, MobileBasePage
-│   │   │   ├── hooks/         # Cucumber hooks
-│   │   │   └── utils/         # ConfigReader
-│   │   └── resources/
-│   │       ├── apps/          # App bundles (APK/APP)
-│   │       └── config/        # Platform configs (android/ios)
-│   └── test/
-│       ├── java/com/automation/
-│       │   ├── pages/         # Page objects
-│       │   ├── stepdefinitions/ # Step definitions
-│       │   └── runners/       # Cucumber TestNG runner
-│       └── resources/
-│           ├── features/      # Gherkin feature files
-│           └── allure.properties
-└── pom.xml
-```
-
-## Requirements (macOS)
-
-- Java 21+
-- Maven 3.6+
-- Node.js + Appium (`npm install -g appium`)
-- Android SDK (for Android tests)
-- Xcode (for iOS tests)
-
-## Appium Setup
-
-```bash
-# Start Appium server
-appium
-
-# List installed drivers
-appium driver list
-
-# Install drivers
-appium driver install uiautomator2
-appium driver install xcuitest
-```
-
-## Configuration Files
-
-Configs are loaded from `src/main/resources/config/{env}.properties`.
-
-Current configs:
-- `android.properties`
-- `ios.properties`
-
-Run with:
-```bash
-mvn test -Denv=android
-mvn test -Denv=ios
-```
-
-## Android Configuration (android.properties)
-
-```properties
-mobile.platform=android
-appium.server.url=http://localhost:4723
-mobile.device.name=Android Emulator
-mobile.udid=emulator-5554
-mobile.platform.version=11.0
-
-# Native app APK
-mobile.app.path=src/main/resources/apps/ApiDemos-debug.apk
-
-# Browser mode (optional)
-# mobile.browser.name=Chrome
-
-# Browser capabilities (similar to selenium-hybrid-framework)
-# mobile.browser.headless=false
-# mobile.browser.args=--start-maximized,--disable-notifications,--disable-infobars
-
-# Automation
-mobile.automation.name=UiAutomator2
-mobile.noReset=true
-mobile.fullReset=false
-```
-
-## iOS Configuration (ios.properties)
-
-Simulator build must be a `.app` compiled for `iphonesimulator`.
-
-```properties
-mobile.platform=ios
-appium.server.url=http://localhost:4723
-
-# Real device (IPA)
-mobile.device.name=iPhone
-# mobile.udid=YOUR_DEVICE_UDID
-# mobile.platform.version=17.5
-
-# Simulator (APP)
-mobile.device.name=iPhone 17 Pro
-mobile.platform.version=26.2
-
-# App path (simulator build)
-mobile.app.path=src/main/resources/apps/My Demo App.app
-
-mobile.automation.name=XCUITest
-mobile.noReset=true
-mobile.fullReset=false
-```
-
-## Running Tests
-
-```bash
-# Android tests
-mvn test -Denv=android -Dtags="@ApiDemos"
-
-# iOS tests
-mvn test -Denv=ios -Dtags="@iOS"
-```
-
-## Listeners, Logging, and Screenshots
-
-### Logging (Log4j2)
-
-Logs are written to console via `src/main/resources/log4j2.xml`.
-
-### Step and Scenario Screenshots
-
-Controlled by configuration:
-
-```properties
-screenshot.steps=false
-screenshot.scenario=true
-```
-
-- `screenshot.steps=true` captures a screenshot after every step.
-- `screenshot.scenario=true` captures one screenshot at scenario end (pass only).
-- Failures always attach a screenshot automatically.
-
-### Allure Categories and Trends
-
-- Categories are defined in `src/test/resources/categories.json`.
-- Trends require Allure history between runs:
-  - Keep `target/allure-results/history` and copy it into the next run.
-  - Example:
-    ```bash
-    cp -R target/allure-report/history target/allure-results/history
-    ```
-
-## Writing Test Cases (Step-by-Step)
-
-1. **Create Feature**
-   - `src/test/resources/features/YourFeature.feature`
-   - Add tags (e.g. `@Android`, `@iOS`)
-
-2. **Create Page Object**
-   - `src/test/java/com/automation/pages/YourPage.java`
-   - Use `AppiumBy` locators
-   - Keep methods small and focused
-
-3. **Create Step Definitions**
-   - `src/test/java/com/automation/stepdefinitions/YourSteps.java`
-   - Bind Gherkin steps to page actions
-
-4. **Update Runner Tags (if needed)**
-   - `src/test/java/com/automation/runners/TestRunner.java`
-
-## Android Useful Commands
-
-```bash
-adb devices
-emulator -avd ApiDemos_1 -port 5554
-adb -s emulator-5554 install -r /path/to/ApiDemos-debug.apk
-adb -s emulator-5554 shell am start -n io.appium.android.apis/.ApiDemos
-adb -s emulator-5554 shell am force-stop io.appium.android.apis
-adb -s emulator-5554 shell pm clear io.appium.android.apis
-```
-
-## iOS Useful Commands
-
-```bash
-# List devices
-xcrun xctrace list devices
-
-# Boot simulator
-xcrun simctl boot "iPhone 17 Pro"
-open -a Simulator
-
-# Install simulator app
-xcrun simctl install booted "/path/to/My Demo App.app"
-```
-
-## Appium Inspector (Locators)
-
-Use Appium Inspector with these minimal caps:
-
-Android:
-- `platformName=Android`
-- `automationName=UiAutomator2`
-- `app=/absolute/path/to/ApiDemos-debug.apk`
-- `deviceName=Android Emulator`
-- `udid=emulator-5554`
-
-iOS Simulator:
-- `platformName=iOS`
-- `automationName=XCUITest`
-- `app=/absolute/path/to/My Demo App.app`
-- `deviceName=iPhone 17 Pro`
-- `platformVersion=26.2`
+Allure reports are published to GitHub Pages:
+- Android: `https://<user>.github.io/<repo>/<run_number>/index.html`
+- iOS: `https://<user>.github.io/<repo>/ios/<run_number>/index.html`
 
 ## Parallel Execution
 
-Set list values in `android.properties`:
+Parallel is supported via TestNG threads and device lists. Set:
+- `threadCount` in `pom.xml`
+- `mobile.device.name.list`, `mobile.udid.list`, `mobile.platform.version.list`
+- start multiple Appium servers (or use Device Farm)
 
-```properties
-appium.server.url.list=http://localhost:4723,http://localhost:4725
-mobile.device.name.list=emulator-5554,emulator-5556
-mobile.udid.list=emulator-5554,emulator-5556
-mobile.platform.version.list=11.0,11.0
+Example:
 ```
-
-Run with:
-```bash
 mvn test -Denv=android -DthreadCount=2
 ```
 
-## Known Issues & Fixes
-
-- **Properties reload each scenario**  
-  Fixed via `ConfigReader` caching (loads once per env).
-
-- **Simulator SDK mismatch**  
-  Use a platform version that exists in `xcrun simctl list runtimes`.
-
-- **Device build on Simulator**  
-  `.ipa` works only on real device. Simulator requires `.app` built for `iphonesimulator`.
-
-- **App path not found**  
-  Ensure `mobile.app.path` is correct. Relative paths resolve from project root.
-
-- **Appium security errors**  
-  Avoid `mobile: shell` unless Appium is started with `--relaxed-security`.
-
-- **simctl not found**  
-  ```bash
-  xcode-select --install
-  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-  ```
-
-## Framework Behavior
-
-- Config loaded once per run (cached).
-- Driver initialized per scenario.
-- Android app reset per scenario (`terminateApp()` + `activateApp()`).
-
-## License
-
-MIT License
-# Mobile Automation Framework
-
-End-to-end mobile automation framework using Appium, Cucumber (BDD), TestNG, and Allure.
-
-## What This Framework Provides
-
-- Appium 9 + Selenium 4
-- Cucumber BDD with Page Object Model
-- Android and iOS support
-- Parallel device support
-- Allure reports
-- Reliable driver lifecycle per scenario
-
-## Project Structure
-
-```
-mobile-automation/
-├── src/
-│   ├── main/
-│   │   ├── java/com/automation/
-│   │   │   ├── base/          # MobileDriverManager, MobileBasePage
-│   │   │   ├── hooks/         # Cucumber hooks
-│   │   │   └── utils/         # ConfigReader
-│   │   └── resources/
-│   │       ├── apps/          # App bundles (APK/APP)
-│   │       └── config/        # Platform configs (android/ios)
-│   └── test/
-│       ├── java/com/automation/
-│       │   ├── pages/         # Page objects
-│       │   ├── stepdefinitions/ # Step definitions
-│       │   └── runners/       # Cucumber TestNG runner
-│       └── resources/
-│           ├── features/      # Gherkin feature files
-│           └── allure.properties
-└── pom.xml
-```
-
-## Requirements (macOS)
-
-- Java 21+
-- Maven 3.6+
-- Node.js + Appium (`npm install -g appium`)
-- Android SDK (for Android tests)
-- Xcode (for iOS tests)
-
-## Appium Setup
-
-```bash
-# Start Appium server
-appium
-
-# List installed drivers
-appium driver list
-
-# Install drivers
-appium driver install uiautomator2
-appium driver install xcuitest
-```
-
-## Configuration Files
-
-Configs are loaded from `src/main/resources/config/{env}.properties`.
-
-Current configs:
-- `android.properties`
-- `ios.properties`
-
-Run with:
-```bash
-mvn test -Denv=android
-mvn test -Denv=ios
-```
-
-## Android Configuration (android.properties)
-
-```properties
-mobile.platform=android
-appium.server.url=http://localhost:4723
-mobile.device.name=Android Emulator
-mobile.udid=emulator-5554
-mobile.platform.version=11.0
-
-# Native app APK
-mobile.app.path=src/main/resources/apps/ApiDemos-debug.apk
-
-# Automation
-mobile.automation.name=UiAutomator2
-mobile.noReset=true
-mobile.fullReset=false
-```
-
-## iOS Configuration (ios.properties)
-
-Simulator build must be a `.app` compiled for `iphonesimulator`.
-
-```properties
-mobile.platform=ios
-appium.server.url=http://localhost:4723
-
-# Real device (IPA)
-mobile.device.name=iPhone
-# mobile.udid=YOUR_DEVICE_UDID
-# mobile.platform.version=17.5
-
-# Simulator (APP)
-mobile.device.name=iPhone 17 Pro
-mobile.platform.version=26.2
-
-# App path (simulator build)
-mobile.app.path=src/main/resources/apps/My Demo App.app
-
-mobile.automation.name=XCUITest
-mobile.noReset=true
-mobile.fullReset=false
-```
-
-## Running Tests
-
-```bash
-# Android tests
-mvn test -Denv=android -Dtags="@ApiDemos"
-
-# iOS tests
-mvn test -Denv=ios -Dtags="@iOS"
-```
-
-## Writing Test Cases (Step-by-Step)
-
-1. **Create Feature**
-   - `src/test/resources/features/YourFeature.feature`
-   - Add tags (e.g. `@Android`, `@iOS`)
-
-2. **Create Page Object**
-   - `src/test/java/com/automation/pages/YourPage.java`
-   - Use `AppiumBy` locators
-   - Keep methods small and focused
-
-3. **Create Step Definitions**
-   - `src/test/java/com/automation/stepdefinitions/YourSteps.java`
-   - Bind Gherkin steps to page actions
-
-4. **Update Runner Tags (if needed)**
-   - `src/test/java/com/automation/runners/TestRunner.java`
-
-## Android Useful Commands
-
-```bash
-adb devices
-emulator -avd ApiDemos_1 -port 5554
-adb -s emulator-5554 install -r /path/to/ApiDemos-debug.apk
-adb -s emulator-5554 shell am start -n io.appium.android.apis/.ApiDemos
-adb -s emulator-5554 shell am force-stop io.appium.android.apis
-adb -s emulator-5554 shell pm clear io.appium.android.apis
-```
-
-## iOS Useful Commands
-
-```bash
-# List devices
-xcrun xctrace list devices
-
-# Boot simulator
-xcrun simctl boot "iPhone 17 Pro"
-open -a Simulator
-
-# Install simulator app
-xcrun simctl install booted "/path/to/My Demo App.app"
-```
-
-## Appium Inspector (Locators)
-
-Use Appium Inspector with these minimal caps:
-
-Android:
-- `platformName=Android`
-- `automationName=UiAutomator2`
-- `app=/absolute/path/to/ApiDemos-debug.apk`
-- `deviceName=Android Emulator`
-- `udid=emulator-5554`
-
-iOS Simulator:
-- `platformName=iOS`
-- `automationName=XCUITest`
-- `app=/absolute/path/to/My Demo App.app`
-- `deviceName=iPhone 17 Pro`
-- `platformVersion=26.2`
-
-## Parallel Execution
-
-Set list values in `android.properties`:
-
-```properties
-appium.server.url.list=http://localhost:4723,http://localhost:4725
-mobile.device.name.list=emulator-5554,emulator-5556
-mobile.udid.list=emulator-5554,emulator-5556
-mobile.platform.version.list=11.0,11.0
-```
-
-Run with:
-```bash
-mvn test -Denv=android -DthreadCount=2
-```
-
-## Known Issues & Fixes
-
-- **Properties reload each scenario**  
-  Fixed via `ConfigReader` caching (loads once per env).
-
-- **Simulator SDK mismatch**  
-  Use a platform version that exists in `xcrun simctl list runtimes`.
-
-- **Device build on Simulator**  
-  `.ipa` works only on real device. Simulator requires `.app` built for `iphonesimulator`.
-
-- **App path not found**  
-  Ensure `mobile.app.path` is correct. Relative paths resolve from project root.
-
-- **Appium security errors**  
-  Avoid `mobile: shell` unless Appium is started with `--relaxed-security`.
-
-- **simctl not found**  
-  ```bash
-  xcode-select --install
-  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-  ```
-
-## Framework Behavior
-
-- Config loaded once per run (cached).
-- Driver initialized per scenario.
-- Android app reset per scenario (`terminateApp()` + `activateApp()`).
-
-## License
-
-MIT License
-=======
-# mobile-automation
->>>>>>> 5f1e0260bfd7833fe570dedfc432b5ba3b84a03f
+## Troubleshooting
+
+- **404 from Appium**: Ensure `appium.server.url` matches your Appium base path.
+  - If Appium started with `-pa /wd/hub`, use `http://localhost:4723/wd/hub`.
+  - Otherwise use `http://localhost:4723`.
+- **Java version error**: Ensure Java 21 is active (`java -version`).
+- **iOS boot issues**: Use a supported simulator and increase timeouts in `ios.properties`.
